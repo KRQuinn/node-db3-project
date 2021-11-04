@@ -17,11 +17,13 @@ function find() { // EXERCISE A
     2A- When you have a grasp on the query go ahead and build it in Knex.
     Return from this function the resulting dataset.
   */
- return db('schemes as sc')
- .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
- .select('sc.*')
- .count('st.step_id as number_of_steps')
- .groupBy('sc.scheme_id')
+    const scheme = db('schemes as sc')
+    .select('sc.*')
+    .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
+    .count('st.step_id as number_of_steps', 'asc')
+    .groupBy('sc.scheme_id')
+    .orderBy('sc.scheme_id')
+  return scheme
 }
 
 async function findById(scheme_id) { // EXERCISE B
@@ -90,27 +92,26 @@ async function findById(scheme_id) { // EXERCISE B
         "steps": []
       }
   */
-  const rows = await db('schemes as sc')
-    .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
-    .where('sc.scheme_id', scheme_id)
-    .select('st.*', 'sc.scheme_name', 'sc.scheme_id')
-    .orderBy('st.step_number')
-
-  const result = {
-    scheme_id: rows[0].scheme_id,
-    scheme_name: rows[0].scheme_name,
-    steps: []
-  }
-  rows.forEach(row => {
-    if (row.step_id) {
-      result.steps.push({
-        scheme_id: row.scheme_id,
-        step_number: row.step_number,
-        instructions: row.instructions
+      const rows = await db('schemes as sc')
+      .select('sc.scheme_name', 'st.*')
+      .leftJoin('steps as st', 'sc.scheme_id', 'st.scheme_id')
+      .where({ 'sc.scheme_id': scheme_id })
+      .orderBy('st.step_number')
+  
+    const steps = rows
+      .filter((row) => row.step_id)
+      .map(({ step_id, step_number, instructions }) => {
+        return { step_id, step_number, instructions }
       })
+  
+    const result = {
+      scheme_id: Number(scheme_id),
+      scheme_name: rows.reduce((acc, curr) => {
+        return curr.scheme_name
+      }, null),
+      steps,
     }
-  })
-  return result
+    return result
 }
 
 async function findSteps(scheme_id) { // EXERCISE C
